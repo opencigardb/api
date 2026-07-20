@@ -8,6 +8,7 @@
     "start": "bun src/index.ts",
     "ingest": "bun scripts/ingest.ts",
     "create-admin": "bun scripts/create-admin.ts",
+    "migrate:catalog": "bun scripts/migrate-catalog.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
