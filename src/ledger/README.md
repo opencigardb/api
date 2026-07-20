@@ -41,9 +41,19 @@ commitment is about the money, not admin identities. The authenticated
 
 `src/ledger/repository.ts` sorts entries chronologically, computes a running
 balance, and returns totals. Writes go through a temp-file-then-rename so a
-crash mid-write can't corrupt the file. Note that admin edits are **not**
-automatically committed to git — for full auditability, commit
-`entries.json` after making changes, the same as any other hand-edited file.
+crash mid-write can't corrupt the file.
+
+Every admin write (`createLedgerEntry`/`updateLedgerEntry`/
+`deleteLedgerEntry`) automatically commits and pushes `entries.json` to this
+repo's GitHub remote via `src/git/commit.ts`, synchronously — the request
+doesn't return success until the push actually lands. This is what makes
+git the real canonical source rather than a manually-maintained mirror: the
+file on GitHub is never stale relative to what the API is serving. Requires
+`GIT_PUSH_TOKEN` in `.env.local` (see `.env.local.example`). If the push
+fails (network issue, revoked token), the write returns `502
+git_sync_failed` — the local file and local commit are left intact
+(unpushed, not rolled back) rather than silently reporting success on data
+that isn't durable yet.
 
 ## Planned automation
 

@@ -1,7 +1,10 @@
 import { rename, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { commitAndPushFile } from "../git/commit";
 
 const LEDGER_PATH = resolve(import.meta.dir, "entries.json");
+const REPO_PATH = resolve(import.meta.dir, "../..");
+const LEDGER_RELATIVE_PATH = "src/ledger/entries.json";
 
 export interface LedgerEntry {
   id: string;
@@ -153,6 +156,12 @@ export async function createLedgerEntry(
   file.entries.push(entry);
   file.updated_at = now;
   await writeLedgerFile(file);
+  await commitAndPushFile({
+    repoPath: REPO_PATH,
+    relativeFilePaths: [LEDGER_RELATIVE_PATH],
+    message: `ledger: ${input.type} $${input.amount_usd.toFixed(2)} — ${input.description} (by ${adminUsername})`,
+    authorName: adminUsername,
+  });
   return entry;
 }
 
@@ -176,16 +185,28 @@ export async function updateLedgerEntry(
   file.entries[index] = updated;
   file.updated_at = now;
   await writeLedgerFile(file);
+  await commitAndPushFile({
+    repoPath: REPO_PATH,
+    relativeFilePaths: [LEDGER_RELATIVE_PATH],
+    message: `ledger: update ${existing.type} $${input.amount_usd.toFixed(2)} entry ${id} — ${input.description} (by ${adminUsername})`,
+    authorName: adminUsername,
+  });
   return updated;
 }
 
-export async function deleteLedgerEntry(id: string): Promise<boolean> {
+export async function deleteLedgerEntry(id: string, adminUsername: string): Promise<boolean> {
   const file = await readLedgerFile();
   const index = file.entries.findIndex((e) => e.id === id);
   if (index === -1) return false;
 
-  file.entries.splice(index, 1);
+  const [removed] = file.entries.splice(index, 1);
   file.updated_at = new Date().toISOString();
   await writeLedgerFile(file);
+  await commitAndPushFile({
+    repoPath: REPO_PATH,
+    relativeFilePaths: [LEDGER_RELATIVE_PATH],
+    message: `ledger: delete ${removed!.type} $${removed!.amount_usd.toFixed(2)} entry ${id} — ${removed!.description} (by ${adminUsername})`,
+    authorName: adminUsername,
+  });
   return true;
 }

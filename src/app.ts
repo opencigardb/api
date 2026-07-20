@@ -16,6 +16,7 @@ import {
   updateCigar,
   type CigarListParams,
 } from "./db/repository";
+import { GitSyncError } from "./git/commit";
 import {
   createLedgerEntry,
   deleteLedgerEntry,
@@ -161,7 +162,8 @@ admin.patch("/ledger/:id", async (c) => {
 });
 
 admin.delete("/ledger/:id", async (c) => {
-  const deleted = await deleteLedgerEntry(c.req.param("id"));
+  const username = adminUsernameFrom(c);
+  const deleted = await deleteLedgerEntry(c.req.param("id"), username);
   if (!deleted) throw new HTTPException(404, { message: "Ledger entry not found" });
   return c.body(null, 204);
 });
@@ -202,6 +204,10 @@ app.route("/v1", v1);
 app.notFound((c) => c.json({ error: { code: "not_found", message: "Resource not found" } }, 404));
 
 app.onError((err, c) => {
+  if (err instanceof GitSyncError) {
+    console.error(err);
+    return c.json({ error: { code: "git_sync_failed", message: err.message } }, 502);
+  }
   if (err instanceof HTTPException) {
     const codes: Record<number, string> = {
       400: "bad_request",

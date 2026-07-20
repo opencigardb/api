@@ -105,3 +105,19 @@ redirect row in the `redirects` table. `GET /v1/cigars/{id}` checks this
 table first and 301s to the survivor if the id was merged away, so old
 links and bookmarks never break. There's no admin UI to un-merge — get the
 survivor right before confirming.
+
+## Git as canonical source
+
+Per RFC-0001/0002/0003, git — not this API's SQLite cache — is meant to be
+the canonical source of catalog and ledger data. `src/git/commit.ts` is the
+shared mechanism: given a repo path and file(s), it stages, commits (as the
+acting admin), and pushes, synchronously, using a one-off token-embedded
+push URL (never written to `.git/config`) built from `GIT_PUSH_TOKEN`. The
+ledger (`src/ledger/repository.ts`) already uses this for every write — see
+`src/ledger/README.md`. Catalog data migration into git-backed JSON
+(`catalog/manufacturers/**`, scoped to Manufacturer + Brand for now — see
+`api/scripts/migrate-catalog.ts`) is in progress; the live
+`updateCigar`/`mergeCigars` SQLite writes have **not** yet been rerouted to
+write through git, since that depends on the full Cigar entity migration
+being unblocked first (see `schemas/README.md` and
+`docs/data-model/catalog/product-line.md`'s placeholder-naming rule).
